@@ -136,10 +136,74 @@ def generate_offspring(population,
 
     return offspring_population
 
-#def fast_non_dominated_sort(population):
+def dominate_operator(elem1, elem2):
+    objectives = ['acc','time']
+    comp = [1,-1]
+
+    dominate_count=[0,0]
+    idx = 0
+
+    for obj in objectives:
+        if elem1[obj] == elem2[obj]:
+            pass
+        elif elem1[obj] > elem2[obj]:
+            if comp[idx] == 1:
+                dominate_count[0] += 1
+            elif comp[idx] == -1:
+                dominate_count[1] += 1
+        idx += 1
+
+    if dominate_count[0] == 0 and dominate_count[1] > 0:
+        return 1
+    elif dominate_count[1] == 0 and dominate_count[0] > 0:
+        return -1
+    else:
+        return 0
+
+def fast_non_dominated_sort(population):
+    S = []
+    n = []
+    sorted = {}
+
+    pidx = 0
+    for p in population:
+        S.append(set())
+        n.append(0)
+        qidx = 0
+
+        for q in population:
+            judge = dominate_operator(p, q)
+            if judge == -1:
+                S[pidx].add(qidx)
+            elif judge == 1:
+                n[pidx] += 1
+            qidx += 1
+
+        if n[pidx] == 0:
+            p['rank'] = 1
+            if not 1 in sorted:
+                sorted[1] = set()
+            sorted[1].add(pidx)
+
+        pidx += 1
+
+    rank = 1
+    while len(sorted[rank]) != 0:
+        sorted[rank+1] = set()
+
+        for pidx in sorted[rank]:
+            for qidx in S[pidx]:
+                n[qidx] -= 1
+                if n[qidx] == 0:
+                    population[qidx]['rank'] = rank
+                    sorted[rank+1].add(qidx)
+        rank += 1
+
+    return sorted
+
 #def crowding_distance_assignment():
 #def crowded_comparison_operator( elem1, elem2 ):
-    # elem is dictionary
+    # elem is dictionary{'acc', 'time', 'spec', 'rank'}
     # return -1: elem1 < elem2  /   1: elem1 < elem2
 
 def nsga2(answer_size=500,
