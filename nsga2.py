@@ -1,5 +1,5 @@
 import constants
-
+import functools
 import numpy as np
 import random
 
@@ -77,14 +77,20 @@ def decode(binary_code):
     return model_spec
 
 
-def parent_selection(population, tournament_size):
+def parent_selection(population, tournament_size=2):
     population_size = len(population)
     selected = []
     for _ in range(2):
-        indexes = random.sample(range(population_size), tournament_size)
-        pool = list(population[i] for i in indexes)
-        pool.sort(key=crowded_comparison_operator)
+        pool = random.sample(population, tournament_size)
+
+        print("pool")
+        for p in pool:
+            print(p['rank'], p['dist'], end='    ')
+        print()
+
+        sorted(pool, key=functools.cmp_to_key(crowded_comparison_operator))
         selected.append(pool[0])
+    print(selected)
     return selected
 
 
@@ -137,19 +143,16 @@ def generate_offspring(population,
 
 
 def dominate_operator(elem1, elem2):
-    objectives = ['acc', 'time']
-    comp = [1, -1]
-
     dominate_count = [0, 0]
     idx = 0
 
-    for obj in objectives:
+    for obj in constants.OBJECTIVES:
         if elem1[obj] == elem2[obj]:
             pass
         elif elem1[obj] > elem2[obj]:
-            if comp[idx] == 1:
+            if constants.OPT[idx] == 1:
                 dominate_count[0] += 1
-            elif comp[idx] == -1:
+            elif constants.OPT[idx] == -1:
                 dominate_count[1] += 1
         idx += 1
 
@@ -203,22 +206,52 @@ def fast_non_dominated_sort(population):
     return sorted
 
 
-# def crowding_distance_assignment():
-# def crowded_comparison_operator( elem1, elem2 ):
-# elem is dictionary{'acc', 'time', 'spec', 'rank'}
-# return -1: elem1 < elem2  /   1: elem1 < elem2
+def crowding_distance_assignment(population):
+    # initialize
+    for elem in population:
+        elem['dist'] = 0
 
-def nsga2(answer_size=500,
-          search_time=25000,
-          population_size=500,
-          crossover_prob=0.9,
-          tournament_size=10,
-          mutation_rate=0.03):
+    for obj in constants.OBJECTIVES:
+        population.sort(key=lambda e: e[obj])
+        max_val = population[-1][obj]
+        min_val = population[0][obj]
 
-    constants.nasbench.reset_budget_counters()
-    # 2 objectives: validation, time
-    population = []  # element is { rank, validation accuracy , time, spec } dictionary
+        start = 0
+        end = len(population) - 1
+        while start <= end and population[start][obj] == min_val:
+            population[start]['dist'] = constants.INFINITE
+            start += 1
+        while start <= end and population[end][obj] == max_val:
+            population[end]['dist'] = constants.INFINITE
+            end -= 1
 
+        pre_dist = min_val
+        for i in range(start, end + 1):
+            cur_dist = population[i]['dist']
+            if cur_dist == constants.INFINITE:
+                continue
+            next_dist = population[i + 1][obj]
+            cur_dist += (next_dist - pre_dist) / (max_val - min_val)
+            population[i]['dist'] = cur_dist
+            pre_dist = population[i][obj]
+
+    print(population)
+
+
+def crowded_comparison_operator(elem1, elem2):
+    # elem is dictionary{'acc', 'time', 'spec', 'rank'}
+    # return -1: elem1 is optimal / 1: elem2 is optimal.
+    if 'rank' in elem1.keys():
+        if elem1['rank'] != elem2['rank']:
+            return 1 if elem2['rank'] - elem1['rank'] > 0 else -1
+
+    if elem1['dist'] == elem2['dist']:
+        return 0
+    else:
+        return 1 if elem2['dist'] - elem1['dist'] > 0 else -1
+
+
+def init_population(population, population_size):
     # For the first population_size individuals, seed the population with randomly
     # generated cells.
     for _ in range(population_size):
@@ -227,8 +260,23 @@ def nsga2(answer_size=500,
         elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
         population.append(elem)
 
+    # To do tournament selection.
+    crowding_distance_assignment(population)
+    fast_non_dominated_sort(population)
+
+def nsgaII(answer_size=500,
+           search_time=25000,
+           population_size=500,
+           crossover_prob=0.9,
+           tournament_size=10,
+           mutation_rate=0.03):
+    constants.nasbench.reset_budget_counters()
+    # 2 objectives: validation, time
+    population = []  # element is { rank, validation accuracy , time, spec } dictionary
+    init_population(population, population_size)
+
     # evolution
-    for _ in range(search_time):
-        population += generate_offspring(population, crossover_prob, tournament_size, mutation_rate)
-        fast_non_dominated_sort()
-        number = 0
+    # for _ in range(search_time):
+    # population += generate_offspring(population, crossover_prob, tournament_size, mutation_rate)
+    # fast_non_dominated_sort()
+    # number = 0
