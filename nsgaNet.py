@@ -44,7 +44,7 @@ def decode(binary_string):
             in_degree[r] += 1
             out_degree[c] += 1
 
-    for node in range(1,6):
+    for node in range(1, 6):
         if in_degree[node] == 0 and out_degree[node] != 0:
             adjacency_mat[0][node] = 1
         elif in_degree[node] != 0 and out_degree[node] == 0:
@@ -52,6 +52,7 @@ def decode(binary_string):
 
     offspring_spec = constants.api.ModelSpec(adjacency_mat, ops)
     return offspring_spec
+
 
 '''
 Binary tournament operation.
@@ -281,7 +282,9 @@ def nsgaII(answer_size=40,
     # Initially Create random parent population
 
     # evolution
-    # for _ in range(search_time):
-    # population += generate_offspring(population, generation_size, tournament_size, crossover_prob, mutation_rate)
-    # fast_non_dominated_sort()
-    # number = 0
+    for _ in range(search_time):
+        population += generate_offspring(population, generation_size, tournament_size, crossover_prob, mutation_rate)
+        crowding_distance_assignment(population)
+        fast_non_dominated_sort(population)
+        sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
+        population = population[:population_size]
