@@ -5,7 +5,7 @@ import random
 
 
 def random_spec():
-    ops = np.full((1, 7), constants.CONV3X3)
+    ops = [constants.CONV3X3 for _ in range(7)]
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
     while True:
@@ -27,7 +27,7 @@ def encode(spec):
 
 def decode(binary_string):
     # initialize
-    ops = np.full((1, 7), constants.CONV3X3)
+    ops = [constants.CONV3X3 for _ in range(7)]
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
     adjacency_mat = np.zeros((7, 7))
@@ -288,3 +288,8 @@ def nsgaII(answer_size=40,
         fast_non_dominated_sort(population)
         sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
         population = population[:population_size]
+
+    accuracy = [person['acc'] for person in population if person['rank'] == 1]
+    time =[person['time'] for person in population if person['rank'] == 1]
+
+    return accuracy, time
