@@ -15,7 +15,7 @@ EDGE_SPOTS = NUM_VERTICES * (NUM_VERTICES - 1) / 2   # Upper triangular matrix
 OP_SPOTS = NUM_VERTICES - 2   # Input/output vertices are fixed
 ALLOWED_OPS = [CONV3X3, CONV1X1, MAXPOOL3X3]
 ALLOWED_EDGES = [0, 1]   # Binary adjacency matrix
-OBJECTIVES = ['acc', 'time']
-OPT = [1, -1]
+OBJECTIVES = ['acc', 'time']    # Objectives of sorting.
+OPT = [1, -1]   # 1 : Minimizing is objective ; -1 : Maximizing is objective.
 INFINITE = 1000000000
 
