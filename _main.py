@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import nsgaNet
-import pareto_front
+import _pareto_front
 
 
 def main():
@@ -8,9 +8,9 @@ def main():
     time = {}
 
     acc['NSGA-Net'], time['NSGA-Net'] = nsgaNet.nsgaII()
-    acc['Answer'], time['Answer'] = pareto_front.pareto_front()
+    #acc['Answer'], time['Answer'] = _pareto_front.pareto_front()
 
-    labels = ['NSGA-Net', 'Answer']
+    labels = ['NSGA-Net']
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     colors = ['salmon', 'steelblue']
     markers = ['o', 'x']

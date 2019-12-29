@@ -9,49 +9,47 @@ def random_spec():
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
     while True:
-        matrix = np.random.choice(constants.ALLOWED_EDGES, size=(constants.NUM_VERTICES, constants.NUM_VERTICES))
-        matrix = np.triu(matrix, 1)
+        rand_binary_str = np.random.choice([0, 1], size=10)
+        matrix = decode(rand_binary_str).tolist()
         spec = constants.api.ModelSpec(matrix=matrix, ops=ops)
         if constants.nasbench.is_valid(spec):
-            return spec
+            data = constants.nasbench.query(spec)
+            return matrix, data
 
 
-def encode(spec):
+def encode(matrix):
     binary_string = []
-    for i in range(2, 6):
-        for j in range(1, i):
-            binary_string.append(spec.matrix[i][j])
+
+    for c in range(2, 6):
+        for r in range(1, c):
+            binary_string.append(matrix[r][c])
 
     return binary_string
 
 
 def decode(binary_string):
     # initialize
-    ops = [constants.CONV3X3 for _ in range(7)]
-    ops[0] = constants.INPUT
-    ops[-1] = constants.OUTPUT
-    adjacency_mat = np.zeros((7, 7))
+    adjacency_mat = np.zeros((7, 7), dtype=int)
     idx = 0
 
-    in_degree = np.zeros(5)
-    out_degree = np.zeros(5)
+    in_degree = np.zeros(7)
+    out_degree = np.zeros(7)
 
     # fill adjacency matrix as binary string
-    for r in range(2, 6):
-        for c in range(1, r):
+    for c in range(2, 6):
+        for r in range(1, c):
             adjacency_mat[r][c] = binary_string[idx]
             idx += 1
-            in_degree[r] += 1
-            out_degree[c] += 1
+            in_degree[c] += 1
+            out_degree[r] += 1
 
     for node in range(1, 6):
         if in_degree[node] == 0 and out_degree[node] != 0:
             adjacency_mat[0][node] = 1
-        elif in_degree[node] != 0 and out_degree[node] == 0:
+        if in_degree[node] != 0 and out_degree[node] == 0:
             adjacency_mat[node][6] = 1
 
-    offspring_spec = constants.api.ModelSpec(adjacency_mat, ops)
-    return offspring_spec
+    return adjacency_mat
 
 
 '''
@@ -66,7 +64,7 @@ def parent_selection(population, tournament_size):
     for _ in range(2):
         pool = random.sample(population, tournament_size)
         sorted(pool, key=functools.cmp_to_key(crowded_comparison_operator))
-        selected.append(pool[0]['spec'])
+        selected.append(pool[0]['mat'])
 
     return selected
 
@@ -99,7 +97,7 @@ Bit flipping at most once
 
 def mutation(offspring, mutation_rate):
     if random.random() < mutation_rate:
-        index = random.sample(range(1, len(offspring)), 1)
+        index = random.sample(range(1, len(offspring)), 1)[0]
         # bitwise
         offspring[index] = (1 + offspring[index]) % 2
 
@@ -113,6 +111,9 @@ def generate_offspring(population,
                        mutation_rate):
     # initialize
     offspring_population = []
+    ops = [constants.CONV3X3 for _ in range(7)]
+    ops[0] = constants.INPUT
+    ops[-1] = constants.OUTPUT
 
     while len(offspring_population) < generation_size:
         # binary_tournament_selection
@@ -127,11 +128,12 @@ def generate_offspring(population,
         # mutation
         offspring = mutation(offspring, mutation_rate)
 
-        offspring_spec = decode(offspring)
+        offspring_mat = decode(offspring).tolist()
+        offspring_spec = constants.api.ModelSpec(matrix=offspring_mat, ops=ops)
 
         if constants.nasbench.is_valid(offspring_spec):
             data = constants.nasbench.query(offspring_spec)
-            elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': offspring_spec}
+            elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'mat': offspring_mat}
             offspring_population.append(elem)
 
     return offspring_population
@@ -195,7 +197,7 @@ def fast_non_dominated_sort(population):
             sorted_by_rank[1].add(p_idx)
 
     pre_rank = 1
-    next_rank = 2;
+    next_rank = 2
     while len(sorted_by_rank[pre_rank]) != 0:
         sorted_by_rank[next_rank] = set()
 
@@ -236,7 +238,7 @@ def crowding_distance_assignment(population):
 
 
 def crowded_comparison_operator(elem1, elem2):
-    # elem is dictionary{'acc', 'time', 'spec', 'rank'}
+    # elem is dictionary{'acc', 'time', 'mat', 'rank'}
     # return -1: elem1 is optimal / 1: elem2 is optimal.
     if 'rank' in elem1.keys():
         if elem1['rank'] != elem2['rank']:
@@ -252,9 +254,8 @@ def init_population(population, population_size):
     # For the first population_size individuals, seed the population with randomly
     # generated cells.
     for _ in range(population_size):
-        spec = random_spec()
-        data = constants.nasbench.query(spec)
-        elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
+        mat, data = random_spec()
+        elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'mat': mat}
         population.append(elem)
 
     # Assign rank to do tournament selection.
@@ -264,12 +265,14 @@ def init_population(population, population_size):
 
 '''
 Main part of nsgaII
-population size :  evolution pool size.
+population size :  evolution pool size default 40.
+generation size : 20
+tournament size : 10
 '''
 
 
 def nsgaII(answer_size=40,
-           search_time=10,
+           search_time=1,
            population_size=40,
            generation_size=20,
            tournament_size=10,
@@ -277,7 +280,7 @@ def nsgaII(answer_size=40,
            mutation_rate=0.02):
     constants.nasbench.reset_budget_counters()
     population = []
-    # Each element is one dictionary as { rank, validation accuracy , time, spec }
+    # Each element is one dictionary as { rank, validation accuracy , time, mat }
     init_population(population, population_size)
     # Initially Create random parent population
 
