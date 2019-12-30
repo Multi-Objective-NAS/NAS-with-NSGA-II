@@ -1,22 +1,22 @@
 import matplotlib.pyplot as plt
 import nsgaNet
-import _pareto_front
+import pareto_front
 
 
 def main():
     acc = {}
     time = {}
 
-    acc['NSGA-Net'], time['NSGA-Net'] = nsgaNet.nsgaII()
-    #acc['Answer'], time['Answer'] = _pareto_front.pareto_front()
+    # acc['NSGA-Net'], time['NSGA-Net'] = nsgaNet.nsgaII()
+    acc['Answer'], time['Answer'] = pareto_front.pareto_front()
 
-    labels = ['NSGA-Net']
+    labels = ['Answer']  # 'NSGA-Net'
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     colors = ['salmon', 'steelblue']
     markers = ['o', 'x']
 
     for i, label in enumerate(labels):
-        ax.scatter(acc[label], time[label], marker=markers[i], color=colors[i], label=label)
+        ax.scatter(time[label], acc[label], marker=markers[i], color=colors[i], label=label)
 
     ax.legend(loc='best')
 

@@ -2,6 +2,7 @@ import constants
 import functools
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 
 def random_spec():
@@ -13,9 +14,7 @@ def random_spec():
         matrix = decode(rand_binary_str).tolist()
         spec = constants.api.ModelSpec(matrix=matrix, ops=ops)
         if constants.nasbench.is_valid(spec):
-            data = constants.nasbench.query(spec)
-            return matrix, data
-
+            return matrix, spec
 
 def encode(matrix):
     binary_string = []
@@ -110,6 +109,7 @@ def generate_offspring(population,
                        crossover_prob,
                        mutation_rate):
     # initialize
+    hash_vals = [ ]
     offspring_population = []
     ops = [constants.CONV3X3 for _ in range(7)]
     ops[0] = constants.INPUT
@@ -254,7 +254,8 @@ def init_population(population, population_size):
     # For the first population_size individuals, seed the population with randomly
     # generated cells.
     for _ in range(population_size):
-        mat, data = random_spec()
+        mat, spec = random_spec()
+        data = constants.nasbench.query(spec)
         elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'mat': mat}
         population.append(elem)
 
@@ -262,6 +263,15 @@ def init_population(population, population_size):
     crowding_distance_assignment(population)
     fast_non_dominated_sort(population)
 
+
+def visualize(population, turn, figure):
+    color = ['#c62828', '#d81b60', '#8e24aa', '#3949ab', '#1e88e5',
+             '#00897b', '#43a047', '#c0ca33', '#ffb300', '#ef6c00']
+    subplot = figure.add_subplot(4, 5, turn)
+    for rank in range(1, len(color)+1):
+        accuracy = [person['acc'] for person in population if person['rank'] == rank]
+        time = [person['time'] for person in population if person['rank'] == rank]
+        subplot.scatter(time, accuracy, color=color[rank-1], label='rank '+str(rank))
 
 '''
 Main part of nsgaII
@@ -272,25 +282,27 @@ tournament size : 10
 
 
 def nsgaII(answer_size=40,
-           search_time=1,
+           search_time=20,
            population_size=40,
            generation_size=20,
            tournament_size=10,
            crossover_prob=0.9,
            mutation_rate=0.02):
     constants.nasbench.reset_budget_counters()
+    figure = plt.figure()
     population = []
-    # Each element is one dictionary as { rank, validation accuracy , time, mat }
+    # Each element is one dictionary as { rank, validation accuracy , time, mat, hash_value }
     init_population(population, population_size)
     # Initially Create random parent population
 
     # evolution
-    for _ in range(search_time):
+    for turn in range(1, search_time+1):
         population += generate_offspring(population, generation_size, tournament_size, crossover_prob, mutation_rate)
         crowding_distance_assignment(population)
         fast_non_dominated_sort(population)
         sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
         population = population[:population_size]
+        visualize(population, turn, figure)
 
     accuracy = [person['acc'] for person in population if person['rank'] == 1]
     time =[person['time'] for person in population if person['rank'] == 1]
