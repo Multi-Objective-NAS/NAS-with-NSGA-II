@@ -29,8 +29,9 @@ def satisfy_condition(mat, op):
     return True
 
 
-def pareto_front():
+def pareto_front(flag):
     answer_list = []
+    total_data = []
     # element = {'acc': , 'time': }
 
     for hash_val in constants.nasbench.hash_iterator():
@@ -41,6 +42,7 @@ def pareto_front():
             model_spec = constants.api.ModelSpec(matrix=mat, ops=op)
             data = constants.nasbench.query(model_spec)
             new_elem = {'acc': data['validation_accuracy'], 'time': data['training_time']}
+            total_data.append(new_elem)
 
             append_flag = True
             for elem in answer_list:
@@ -54,8 +56,15 @@ def pareto_front():
             if append_flag:
                 answer_list.append(new_elem)
 
-    accuracy = [elem['acc'] for elem in answer_list]
-    time = [elem['time'] for elem in answer_list]
-    print(len(accuracy))
+    if flag is False:
+        # print total data
+        accuracy = [elem['acc'] for elem in total_data]
+        time = [elem['time'] for elem in total_data]
+        print("total data number is", len(total_data))
+
+    else:
+        # print pareto front data
+        accuracy = [elem['acc'] for elem in answer_list]
+        time = [elem['time'] for elem in answer_list]
 
     return accuracy, time

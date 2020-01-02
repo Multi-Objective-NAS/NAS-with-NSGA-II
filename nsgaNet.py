@@ -5,7 +5,7 @@ import random
 import matplotlib.pyplot as plt
 
 
-def random_spec():
+def random_spec(population):
     ops = [constants.CONV3X3 for _ in range(7)]
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
@@ -13,8 +13,9 @@ def random_spec():
         rand_binary_str = np.random.choice([0, 1], size=10)
         matrix = decode(rand_binary_str).tolist()
         spec = constants.api.ModelSpec(matrix=matrix, ops=ops)
-        if constants.nasbench.is_valid(spec):
-            return matrix, spec
+        if possible_to_get_in(population, spec):
+            return spec
+
 
 def encode(matrix):
     binary_string = []
@@ -63,10 +64,8 @@ def parent_selection(population, tournament_size):
     for _ in range(2):
         pool = random.sample(population, tournament_size)
         sorted(pool, key=functools.cmp_to_key(crowded_comparison_operator))
-        selected.append(pool[0]['mat'])
-
+        selected.append(pool[0]['spec'].original_matrix)
     return selected
-
 
 '''
 Crossover from two selected population members as parents.
@@ -77,17 +76,15 @@ Maintain complexity.
 
 def crossover(parent1, parent2, crossover_prob):
     offspring = []
-
-    for p1, p2 in zip(parent1, parent2):
-        if p1 == p2:
-            offspring.append(p1)
-        elif random.random() < crossover_prob:
-            offspring.append(p1)
-        else:
-            offspring.append(p2)
-
+    if random.random() < crossover_prob:
+        for p1, p2 in zip(parent1, parent2):
+            if p1 != p2:
+                offspring.append(random.randrange(0, 2))
+            else:
+                offspring.append(p1)
+    else:
+        offspring = parent1
     return offspring
-
 
 '''
 Bit flipping at most once
@@ -96,11 +93,32 @@ Bit flipping at most once
 
 def mutation(offspring, mutation_rate):
     if random.random() < mutation_rate:
-        index = random.sample(range(1, len(offspring)), 1)[0]
+        index = random.sample(range(len(offspring)), 1)[0]
         # bitwise
         offspring[index] = (1 + offspring[index]) % 2
 
     return offspring
+
+
+def possible_to_get_in(pool, spec):
+    if not constants.nasbench.is_valid(spec):
+        return False
+    for p in pool:
+        if equal_model(p['spec'], spec):
+            return False
+    return True
+
+
+def equal_model(present_spec, new_spec):
+    if np.shape(present_spec.matrix)[0] != np.shape(new_spec.matrix)[0]:
+        return False
+    size = np.shape(present_spec.matrix)[0]
+    return all([present_spec.matrix[row][col] == new_spec.matrix[row][col] for row in range(size) for col in range(row+1, size)])
+    '''
+    binary_str1 = encode(matrix1)
+    binary_str2 = encode(matrix2)
+    return all([binary_str1[idx] == binary_str2[idx] for idx in range(len(binary_str1))])
+    '''
 
 
 def generate_offspring(population,
@@ -109,7 +127,6 @@ def generate_offspring(population,
                        crossover_prob,
                        mutation_rate):
     # initialize
-    hash_vals = [ ]
     offspring_population = []
     ops = [constants.CONV3X3 for _ in range(7)]
     ops[0] = constants.INPUT
@@ -131,9 +148,9 @@ def generate_offspring(population,
         offspring_mat = decode(offspring).tolist()
         offspring_spec = constants.api.ModelSpec(matrix=offspring_mat, ops=ops)
 
-        if constants.nasbench.is_valid(offspring_spec):
+        if possible_to_get_in(offspring_population + population, offspring_spec):
             data = constants.nasbench.query(offspring_spec)
-            elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'mat': offspring_mat}
+            elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': offspring_spec}
             offspring_population.append(elem)
 
     return offspring_population
@@ -152,9 +169,9 @@ def dominate_operator(elem1, elem2):
         if elem1[obj] == elem2[obj]:
             pass
         elif (elem1[obj] - elem2[obj]) * criteria > 0:
-            dominate_count[0] += 1;
+            dominate_count[0] += 1
         else:
-            dominate_count[1] += 1;
+            dominate_count[1] += 1
 
     if dominate_count[0] == 0 and dominate_count[1] > 0:
         # elem2 dominates elem1
@@ -238,7 +255,7 @@ def crowding_distance_assignment(population):
 
 
 def crowded_comparison_operator(elem1, elem2):
-    # elem is dictionary{'acc', 'time', 'mat', 'rank'}
+    # elem is dictionary{'acc', 'time', 'spec', 'rank'}
     # return -1: elem1 is optimal / 1: elem2 is optimal.
     if 'rank' in elem1.keys():
         if elem1['rank'] != elem2['rank']:
@@ -254,9 +271,9 @@ def init_population(population, population_size):
     # For the first population_size individuals, seed the population with randomly
     # generated cells.
     for _ in range(population_size):
-        mat, spec = random_spec()
+        spec = random_spec(population)
         data = constants.nasbench.query(spec)
-        elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'mat': mat}
+        elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
         population.append(elem)
 
     # Assign rank to do tournament selection.
@@ -268,13 +285,17 @@ def visualize(population, turn, figure):
     color = ['#c62828', '#d81b60', '#8e24aa', '#3949ab', '#1e88e5',
              '#00897b', '#43a047', '#c0ca33', '#ffb300', '#ef6c00']
     subplot = figure.add_subplot(4, 5, turn)
-    for rank in range(1, len(color)+1):
+    # print("[In this turn...]" + str(turn))
+    for rank in range(1, len(color) + 1):
         accuracy = [person['acc'] for person in population if person['rank'] == rank]
         time = [person['time'] for person in population if person['rank'] == rank]
-        subplot.scatter(time, accuracy, color=color[rank-1], label='rank '+str(rank))
+        # print(len(accuracy))
+        subplot.scatter(time, accuracy, color=color[rank - 1], label='rank ' + str(rank))
+
 
 '''
 Main part of nsgaII
+search_time=20
 population size :  evolution pool size default 40.
 generation size : 20
 tournament size : 10
@@ -282,29 +303,39 @@ tournament size : 10
 
 
 def nsgaII(answer_size=40,
-           search_time=20,
+           search_time=2000,
            population_size=40,
-           generation_size=20,
-           tournament_size=10,
+           generation_size=10,
+           tournament_size=5,
            crossover_prob=0.9,
-           mutation_rate=0.02):
+           mutation_rate=0.1):
     constants.nasbench.reset_budget_counters()
     figure = plt.figure()
     population = []
-    # Each element is one dictionary as { rank, validation accuracy , time, mat, hash_value }
+    # Each element is one dictionary as { rank, validation accuracy , time, spec }
     init_population(population, population_size)
     # Initially Create random parent population
 
     # evolution
-    for turn in range(1, search_time+1):
+    for turn in range(1, search_time + 1):
         population += generate_offspring(population, generation_size, tournament_size, crossover_prob, mutation_rate)
         crowding_distance_assignment(population)
         fast_non_dominated_sort(population)
         sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
         population = population[:population_size]
-        visualize(population, turn, figure)
+        if turn % 100 == 0:
+            visualize(population, turn//100, figure)
+
+    '''
+    # check
+    for p in population:
+        print("[person]")
+        bin_str = encode(p['mat'])
+        print(bin_str)
+        print(p['acc'], p['time'])
+    '''
 
     accuracy = [person['acc'] for person in population if person['rank'] == 1]
-    time =[person['time'] for person in population if person['rank'] == 1]
+    time = [person['time'] for person in population if person['rank'] == 1]
 
     return accuracy, time
