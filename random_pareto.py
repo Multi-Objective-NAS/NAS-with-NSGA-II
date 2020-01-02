@@ -17,7 +17,7 @@ def random_pareto_front(size):
     nsgaNet.crowding_distance_assignment(random_list)
     nsgaNet.fast_non_dominated_sort(random_list)
 
-    accuracy = [elem['acc'] for elem in random_list]
-    time = [elem['time'] for elem in random_list]
+    accuracy = [elem['acc'] for elem in random_list if elem['rank'] == 1]
+    time = [elem['time'] for elem in random_list if elem['rank'] == 1]
 
     return accuracy, time

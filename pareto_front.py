@@ -7,22 +7,7 @@ def satisfy_condition(mat, op):
     length = len(op)
     if not all([op == constants.CONV3X3 for op in op[1:length - 1]]):
         return False
-    in_degree = np.zeros(7)
-    out_degree = np.zeros(7)
 
-    # fill adjacency matrix as binary string
-    for c in range(2, length - 1):
-        for r in range(1, c):
-            in_degree[c] += 1
-            out_degree[r] += 1
-
-    if mat[0][length - 1] == 1:
-        return False
-    for node in range(1, length - 1):
-        if in_degree[node] != 0 and mat[0][node] == 1:
-            return False
-        if out_degree[node] != 0 and mat[node][length - 1] == 1:
-            return False
     return True
 
 
@@ -60,5 +45,6 @@ def pareto_front():
     tot_time = [elem['time'] for elem in total_data]
     ans_accuracy = [elem['acc'] for elem in answer_list]
     ans_time = [elem['time'] for elem in answer_list]
+    print("[total data set size]", len(total_data))
 
     return tot_accuracy, tot_time, ans_accuracy, ans_time

@@ -10,7 +10,7 @@ def random_spec(population):
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
     while True:
-        rand_binary_str = np.random.choice([0, 1], size=10)
+        rand_binary_str = np.random.choice([0, 1], size=21)
         matrix = decode(rand_binary_str).tolist()
         spec = constants.api.ModelSpec(matrix=matrix, ops=ops)
         if possible_to_get_in(population, spec):
@@ -21,8 +21,8 @@ def encode(matrix):
     size = np.shape(matrix)[0]
     binary_string = []
 
-    for c in range(2, size-1):
-        for r in range(1, c):
+    for c in range(size):
+        for r in range(c):
             binary_string.append(matrix[r][c])
 
     return binary_string
@@ -33,22 +33,10 @@ def decode(binary_string):
     adjacency_mat = np.zeros((7, 7), dtype=int)
     idx = 0
 
-    in_degree = np.zeros(7)
-    out_degree = np.zeros(7)
-
     # fill adjacency matrix as binary string
-    for c in range(2, 6):
-        for r in range(1, c):
+    for c in range(7):
+        for r in range(c):
             adjacency_mat[r][c] = binary_string[idx]
-            idx += 1
-            in_degree[c] += 1
-            out_degree[r] += 1
-
-    for node in range(1, 6):
-        if in_degree[node] == 0 and out_degree[node] != 0:
-            adjacency_mat[0][node] = 1
-        if in_degree[node] != 0 and out_degree[node] == 0:
-            adjacency_mat[node][6] = 1
 
     return adjacency_mat
 
