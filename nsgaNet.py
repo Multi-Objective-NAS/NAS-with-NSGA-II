@@ -18,9 +18,10 @@ def random_spec(population):
 
 
 def encode(matrix):
+    size = np.shape(matrix)[0]
     binary_string = []
 
-    for c in range(2, 6):
+    for c in range(2, size-1):
         for r in range(1, c):
             binary_string.append(matrix[r][c])
 
@@ -167,8 +168,8 @@ def dominate_operator(elem1, elem2):
 
     for obj, criteria in zip(constants.OBJECTIVES, constants.OPT):
         if elem1[obj] == elem2[obj]:
-            pass
-        elif (elem1[obj] - elem2[obj]) * criteria > 0:
+            continue
+        elif ((elem1[obj] - elem2[obj]) * criteria) > 0.0:
             dominate_count[0] += 1
         else:
             dominate_count[1] += 1
@@ -285,6 +286,8 @@ def visualize(population, turn, figure):
     color = ['#c62828', '#d81b60', '#8e24aa', '#3949ab', '#1e88e5',
              '#00897b', '#43a047', '#c0ca33', '#ffb300', '#ef6c00']
     subplot = figure.add_subplot(4, 5, turn)
+    subplot.set_xlim([1500, 5000])
+    subplot.set_ylim([0.80, 0.95])
     # print("[In this turn...]" + str(turn))
     for rank in range(1, len(color) + 1):
         accuracy = [person['acc'] for person in population if person['rank'] == rank]
@@ -308,9 +311,9 @@ def nsgaII(answer_size=40,
            generation_size=10,
            tournament_size=5,
            crossover_prob=0.9,
-           mutation_rate=0.1):
+           mutation_rate=0.5):
     constants.nasbench.reset_budget_counters()
-    figure = plt.figure()
+    figure = plt.figure(figsize=(12, 12))
     population = []
     # Each element is one dictionary as { rank, validation accuracy , time, spec }
     init_population(population, population_size)
@@ -333,9 +336,11 @@ def nsgaII(answer_size=40,
         bin_str = encode(p['mat'])
         print(bin_str)
         print(p['acc'], p['time'])
-    '''
-
+    
     accuracy = [person['acc'] for person in population if person['rank'] == 1]
     time = [person['time'] for person in population if person['rank'] == 1]
+    '''
+    accuracy = [person['acc'] for person in population]
+    time = [person['time'] for person in population]
 
     return accuracy, time
