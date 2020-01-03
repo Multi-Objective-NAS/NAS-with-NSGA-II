@@ -2,8 +2,8 @@ import subprocess
 # Download the raw data (only 108 epoch data points, for full dataset,
 # uncomment the second line for nasbench_full.tfrecord).
 
-subprocess.call('curl -O https://storage.googleapis.com/nasbench/nasbench_only108.tfrecord', shell = True)
-#subprocess.call('curl -O https://storage.googleapis.com/nasbench/nasbench_full.tfrecord', shell = True)
+#subprocess.call('curl -O https://storage.googleapis.com/nasbench/nasbench_only108.tfrecord', shell = True)
+subprocess.call('curl -O https://storage.googleapis.com/nasbench/nasbench_full.tfrecord', shell = True)
 
 # Clone and install the code and dependencies.
 

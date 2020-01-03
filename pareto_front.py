@@ -28,8 +28,7 @@ def pareto_front():
 
             append_flag = True
             idx = 0
-            while idx < len(answer_list):
-                elem = answer_list[idx]
+            for elem in answer_list[:]:
                 judge = nsgaNet.dominate_operator(elem, new_elem)
                 if judge > 0:
                     answer_list.remove(elem)
@@ -37,7 +36,6 @@ def pareto_front():
                 elif judge < 0:
                     append_flag = False
                     break
-                idx += 1
             if append_flag:
                 answer_list.append(new_elem)
 

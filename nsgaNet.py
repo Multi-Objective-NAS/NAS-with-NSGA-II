@@ -10,7 +10,10 @@ def random_spec(population):
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
     while True:
-        rand_binary_str = np.random.choice([0, 1], size=21)
+        sz = random.randint(1, 10)
+        rand_binary_str = [0 for _ in range(21)]
+        for idx in random.sample(range(21), sz):
+            rand_binary_str[idx] = 1
         matrix = decode(rand_binary_str).tolist()
         spec = constants.api.ModelSpec(matrix=matrix, ops=ops)
         if possible_to_get_in(population, spec):
@@ -37,6 +40,7 @@ def decode(binary_string):
     for c in range(7):
         for r in range(c):
             adjacency_mat[r][c] = binary_string[idx]
+            idx += 1
 
     return adjacency_mat
 
@@ -52,9 +56,10 @@ def parent_selection(population, tournament_size):
     selected = []
     for _ in range(2):
         pool = random.sample(population, tournament_size)
-        sorted(pool, key=functools.cmp_to_key(crowded_comparison_operator))
+        pool = sorted(pool, key=functools.cmp_to_key(crowded_comparison_operator))
         selected.append(pool[0]['spec'].original_matrix)
     return selected
+
 
 '''
 Crossover from two selected population members as parents.
@@ -74,6 +79,7 @@ def crossover(parent1, parent2, crossover_prob):
     else:
         offspring = parent1
     return offspring
+
 
 '''
 Bit flipping at most once
@@ -102,12 +108,8 @@ def equal_model(present_spec, new_spec):
     if np.shape(present_spec.matrix)[0] != np.shape(new_spec.matrix)[0]:
         return False
     size = np.shape(present_spec.matrix)[0]
-    return all([present_spec.matrix[row][col] == new_spec.matrix[row][col] for row in range(size) for col in range(row+1, size)])
-    '''
-    binary_str1 = encode(matrix1)
-    binary_str2 = encode(matrix2)
-    return all([binary_str1[idx] == binary_str2[idx] for idx in range(len(binary_str1))])
-    '''
+    return all([present_spec.matrix[row][col] == new_spec.matrix[row][col] for row in range(size) for col in
+                range(row + 1, size)])
 
 
 def generate_offspring(population,
@@ -246,14 +248,13 @@ def crowding_distance_assignment(population):
 def crowded_comparison_operator(elem1, elem2):
     # elem is dictionary{'acc', 'time', 'spec', 'rank'}
     # return -1: elem1 is optimal / 1: elem2 is optimal.
-    if 'rank' in elem1.keys():
-        if elem1['rank'] != elem2['rank']:
-            return 1 if elem2['rank'] - elem1['rank'] > 0 else -1
-
-    if elem1['dist'] == elem2['dist']:
-        return 0
+    if elem1['rank'] != elem2['rank']:
+        return -1 if (elem2['rank'] - elem1['rank']) > 0 else 1
     else:
-        return 1 if elem2['dist'] - elem1['dist'] > 0 else -1
+        if elem1['dist'] == elem2['dist']:
+            return 0
+        else:
+            return -1 if (elem2['dist'] - elem1['dist']) < 0 else 1
 
 
 def init_population(population, population_size):
@@ -271,11 +272,13 @@ def init_population(population, population_size):
 
 
 def visualize(population, turn, figure):
-    color = ['#c62828', '#d81b60', '#8e24aa', '#3949ab', '#1e88e5',
-             '#00897b', '#43a047', '#c0ca33', '#ffb300', '#ef6c00']
+    # red, orange, yellow, light green, green
+    # light blue, blue, violet, brown
+    color = ['#c62828', '#ef6c00', '#fdd835', '#7cb342', '#004d40',
+             '#039be5', '#1a237e', '#7b1fa2', '#5d4037']
     subplot = figure.add_subplot(4, 5, turn)
-    subplot.set_xlim([1500, 5000])
-    subplot.set_ylim([0.80, 0.95])
+    subplot.set_xlim([0, 5000])
+    subplot.set_ylim([0.7, 1.0])
     # print("[In this turn...]" + str(turn))
     for rank in range(1, len(color) + 1):
         accuracy = [person['acc'] for person in population if person['rank'] == rank]
@@ -293,42 +296,37 @@ tournament size : 10
 '''
 
 
-def nsgaII(answer_size=40,
-           search_time=2000,
+def nsgaII(search_time=60,
            population_size=40,
            generation_size=10,
            tournament_size=5,
            crossover_prob=0.9,
            mutation_rate=0.5):
+
     constants.nasbench.reset_budget_counters()
     figure = plt.figure(figsize=(12, 12))
     population = []
+    search_space = []
+    period = search_time // 20
     # Each element is one dictionary as { rank, validation accuracy , time, spec }
     init_population(population, population_size)
     # Initially Create random parent population
 
     # evolution
     for turn in range(1, search_time + 1):
-        population += generate_offspring(population, generation_size, tournament_size, crossover_prob, mutation_rate)
+        offspring = generate_offspring(population, generation_size, tournament_size, crossover_prob, mutation_rate)
+        population += offspring
+        search_space += offspring
         crowding_distance_assignment(population)
         fast_non_dominated_sort(population)
-        sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
+        population = sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
         population = population[:population_size]
-        if turn % 100 == 0:
-            visualize(population, turn//100, figure)
+        if turn % period == 0:
+            visualize(population, turn // period, figure)
 
-    '''
-    # check
-    for p in population:
-        print("[person]")
-        bin_str = encode(p['mat'])
-        print(bin_str)
-        print(p['acc'], p['time'])
-    
-    accuracy = [person['acc'] for person in population if person['rank'] == 1]
-    time = [person['time'] for person in population if person['rank'] == 1]
-    '''
-    accuracy = [person['acc'] for person in population]
-    time = [person['time'] for person in population]
+    pop_accuracy = [person['acc'] for person in population if person['rank'] == 1]
+    pop_time = [person['time'] for person in population if person['rank'] == 1]
+    ss_accuracy = [person['acc'] for person in search_space]
+    ss_time = [person['time'] for person in search_space]
 
-    return accuracy, time
+    return pop_accuracy, pop_time, ss_accuracy, ss_time
