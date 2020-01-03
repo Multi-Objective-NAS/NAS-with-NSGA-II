@@ -1,9 +1,10 @@
-import nsgaNet
 import constants
+import nsgaNet
 
 
 def random_pareto_front(size):
     random_list = []
+    random_search_space = []
     # element = {'acc': , 'time': }
 
     while len(random_list) <= size:
@@ -17,7 +18,9 @@ def random_pareto_front(size):
     nsgaNet.crowding_distance_assignment(random_list)
     nsgaNet.fast_non_dominated_sort(random_list)
 
-    accuracy = [elem['acc'] for elem in random_list if elem['rank'] == 1]
-    time = [elem['time'] for elem in random_list if elem['rank'] == 1]
+    pareto_accuracy = [elem['acc'] for elem in random_list if elem['rank'] == 1]
+    pareto_time = [elem['time'] for elem in random_list if elem['rank'] == 1]
+    ss_accuracy = [elem['acc'] for elem in random_list]
+    ss_time = [elem['time'] for elem in random_list]
 
-    return accuracy, time
+    return pareto_accuracy, pareto_time, ss_accuracy, ss_time

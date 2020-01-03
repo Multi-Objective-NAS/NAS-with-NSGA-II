@@ -44,5 +44,7 @@ def pareto_front():
     ans_accuracy = [elem['acc'] for elem in answer_list]
     ans_time = [elem['time'] for elem in answer_list]
     print("[total data set size]", len(total_data))
+    for elem in total_data:
+        print(elem['mat'])
 
     return tot_accuracy, tot_time, ans_accuracy, ans_time

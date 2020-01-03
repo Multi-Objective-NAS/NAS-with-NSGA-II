@@ -10,7 +10,10 @@ def random_spec(population):
     ops[0] = constants.INPUT
     ops[-1] = constants.OUTPUT
     while True:
-        sz = random.randint(1, 10)
+        prob = random.uniform(0, 1)
+        for sz in range(1, 10):
+            if prob <= constants.Prob_size[sz-1]:
+                break
         rand_binary_str = [0 for _ in range(21)]
         for idx in random.sample(range(21), sz):
             rand_binary_str[idx] = 1
@@ -96,12 +99,13 @@ def mutation(offspring, mutation_rate):
 
 
 def possible_to_get_in(pool, spec):
-    if not constants.nasbench.is_valid(spec):
+    if constants.nasbench.is_valid(spec) is False:
         return False
-    for p in pool:
-        if equal_model(p['spec'], spec):
-            return False
-    return True
+    else:
+        for p in pool:
+            if equal_model(p['spec'], spec):
+                return False
+        return True
 
 
 def equal_model(present_spec, new_spec):
@@ -296,12 +300,12 @@ tournament size : 10
 '''
 
 
-def nsgaII(search_time=60,
-           population_size=40,
-           generation_size=10,
-           tournament_size=5,
+def nsgaII(search_time=40,
+           population_size=20,
+           generation_size=3,
+           tournament_size=3,
            crossover_prob=0.9,
-           mutation_rate=0.5):
+           mutation_rate=0.2):
 
     constants.nasbench.reset_budget_counters()
     figure = plt.figure(figsize=(12, 12))
