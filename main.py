@@ -20,6 +20,8 @@ def main():
     # yellow, light green, gray, violet, steel blue, green
     colors = ['#fff176', '#a5d6a7', '#9e9e9e', 'violet', 'red', 'green']
     markers = ['o', 'o', 'x', '*', '^', '>']
+    ax.set_xlabel('time')
+    ax.set_ylabel('accuracy')
 
     for i, label in enumerate(labels):
         ax.scatter(time[label], acc[label], marker=markers[i], color=colors[i], label=label)
