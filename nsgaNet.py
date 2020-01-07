@@ -6,37 +6,22 @@ import random
 import itertools
 import matplotlib.pyplot as plt
 
+'''
+Return spec
+'''
 
-def random_spec(population):
-    operation_code = [np.random.randint(3) for _ in range(5)]
 
-    while True:
-        prob = np.random.uniform(0, 1)
-        for sz in range(1, 10):
-            if prob <= constants.Prob_size[sz - 1]:
-                break
-        rand_binary_str = [0 for _ in range(21)]
-        for idx in random.sample(range(21), sz):
-            rand_binary_str[idx] = 1
+def random_generation(population, population_size):
+    random_search_space = random.sample(constants.whole_hash_list, population_size)
 
-        # initialize
-        adjacency_mat = np.zeros((7, 7), dtype=int)
-        idx = 0
-
-        # fill adjacency matrix as binary string
-        for c in range(7):
-            for r in range(c):
-                adjacency_mat[r][c] = rand_binary_str[idx]
-                idx += 1
-
-        ops = [constants.INPUT]
-        ops += [constants.ALLOWED_OPS[idx] for idx in operation_code]
-        ops.append(constants.OUTPUT)
-
-        spec = decode({'mat': adjacency_mat, 'ops': ops})
-        if possible_to_get_in(population, spec):
-            return spec
-
+    for hash_val in random_search_space:
+        fixed_stat, computed_stat = constants.nasbench.get_metrics_from_hash(hash_val)
+        mat = fixed_stat['module_adjacency']
+        op = fixed_stat['module_operations']
+        spec = constants.api.ModelSpec(matrix=mat, ops=op)
+        data = constants.nasbench.query(spec)
+        new_elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
+        population.append(new_elem)
 
 '''
 Return {matrix_code, operation_code}
@@ -50,11 +35,11 @@ def encode(spec):
     # make 7x7 matrix and 7 operation
     size = np.shape(matrix)[0]
     adjacency_mat = np.zeros((7, 7), dtype=int)
-    adjacency_mat[:size-1, :size-1] = np.copy(matrix[:size-1, :size-1])
-    adjacency_mat[:size, 6] = np.copy(matrix[:size, size-1])
+    adjacency_mat[:size - 1, :size - 1] = np.copy(matrix[:size - 1, :size - 1])
+    adjacency_mat[:size, 6] = np.copy(matrix[:size, size - 1])
 
     extended_ops = ops[:]
-    extended_ops[-1:-1] = [constants.CONV3X3 for _ in range(7-size)]
+    extended_ops[-1:-1] = [constants.CONV3X3 for _ in range(7 - size)]
     '''
     size = np.shape(matrix)[0]
     matrix_code = []
@@ -125,7 +110,6 @@ def graph_transform(parent1, parent2):
             parent1['ops'] = plabel1
 
 
-
 '''
 Input, Output : (mat nparray, op list)
 Crossover from two selected population members as parents.
@@ -150,7 +134,7 @@ def crossover(parent1, parent2, crossover_prob):
                 offspring_mat[prenode, idx] = 1
                 check[prenode] = True
             # randomly choose different part
-            connected = np.union1d(p1, p2) .tolist()
+            connected = np.union1d(p1, p2).tolist()
             choice_size = np.random.randint(len(connected)) + 1
             for prenode in random.sample(connected, choice_size):
                 offspring_mat[prenode, idx] = 1
@@ -159,7 +143,7 @@ def crossover(parent1, parent2, crossover_prob):
     for idx in range(7):
         if np.random.randint(2) == 0:
             offspring_ops[idx] = parent2['ops'][idx]
-    return {'mat': offspring_mat, 'ops': offspring_ops }
+    return {'mat': offspring_mat, 'ops': offspring_ops}
 
 
 '''
@@ -191,11 +175,14 @@ def possible_to_get_in(pool, spec):
 
 
 def equal_model(present_spec, new_spec):
-    if np.shape(present_spec.matrix)[0] != np.shape(new_spec.matrix)[0]:
+    present_mat = present_spec.matrix
+    present_label = present_spec.ops
+    new_mat = new_spec.matrix
+    new_label = new_spec.ops
+    if np.shape(present_mat) != np.shape(new_mat):
         return False
-    size = np.shape(present_spec.matrix)[0]
-    return all([present_spec.matrix[row][col] == new_spec.matrix[row][col] for row in range(size) for col in
-                range(row + 1, size)])
+    else:
+        return gu.is_isomorphic((present_mat.tolist(), present_label), (new_mat.tolist(), new_label))
 
 
 def generate_offspring(population,
@@ -343,11 +330,7 @@ def crowded_comparison_operator(elem1, elem2):
 def init_population(population, population_size):
     # For the first population_size individuals, seed the population with randomly
     # generated cells.
-    for _ in range(population_size):
-        spec = random_spec(population)
-        data = constants.nasbench.query(spec)
-        elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
-        population.append(elem)
+    random_generation(population, population_size)
 
     # Assign rank to do tournament selection.
     crowding_distance_assignment(population)
