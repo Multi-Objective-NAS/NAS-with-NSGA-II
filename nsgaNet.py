@@ -12,6 +12,8 @@ Return spec
 
 
 def random_generation(population, population_size):
+    times = []
+    hvs = []
     random_search_space = random.sample(constants.whole_hash_list, population_size)
 
     for hash_val in random_search_space:
@@ -22,6 +24,10 @@ def random_generation(population, population_size):
         data = constants.nasbench.query(spec)
         new_elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
         population.append(new_elem)
+        fast_non_dominated_sort(population)
+        count_hypervolume(population, times=times, hvs=hvs)
+    return times, hvs
+
 
 '''
 Return {matrix_code, operation_code}
@@ -334,23 +340,31 @@ def init_population(population, population_size):
 
     # Assign rank to do tournament selection.
     crowding_distance_assignment(population)
-    fast_non_dominated_sort(population)
+    # fast_non_dominated_sort(population)
 
 
-def visualize(population, turn, figure):
+def visualize(population, turn, ax):
     # red, orange, yellow, light green, green
     # light blue, blue, violet, brown
     color = ['#c62828', '#ef6c00', '#fdd835', '#7cb342', '#004d40',
              '#039be5', '#1a237e', '#7b1fa2', '#5d4037']
-    subplot = figure.add_subplot(4, 5, turn)
-    subplot.set_xlim([0, 5000])
-    subplot.set_ylim([0.7, 1.0])
-    # print("[In this turn...]" + str(turn))
-    for rank in range(1, len(color) + 1):
-        accuracy = [person['acc'] for person in population if person['rank'] == rank]
-        time = [person['time'] for person in population if person['rank'] == rank]
-        # print(len(accuracy))
-        subplot.scatter(time, accuracy, color=color[rank - 1], label='rank ' + str(rank))
+    markers = ['o', 'x', '*', '^', '>', '<']
+    accuracy_list = [elem['acc'] for elem in population if elem['rank'] == 1]
+    time_list = [elem['time'] for elem in population if elem['rank'] == 1]
+    ax.scatter(time_list, accuracy_list, color=color[turn], marker=markers[turn], label='NSGA_' + str(turn))
+
+
+def count_hypervolume(population, times, hvs):
+    time_spent, _ = constants.nasbench.get_budget_counters()
+
+    pareto_front = [elem for elem in population if elem['rank'] == 1]
+    pareto_front.sort(key=lambda e: e['time'])
+    HV = 0.0
+    for idx in range(len(pareto_front) - 1):
+        HV += (pareto_front[idx + 1]['time'] - pareto_front[idx]['time']) * pareto_front[idx]['acc']
+    HV += (constants.time_inf - pareto_front[-1]['time']) * pareto_front[-1]['acc']
+    times.append(time_spent)
+    hvs.append(HV)
 
 
 '''
@@ -362,17 +376,24 @@ tournament size : 10
 '''
 
 
-def nsgaII(search_time=40,
-           population_size=20,
-           generation_size=3,
-           tournament_size=3,
-           crossover_prob=0.9,
-           mutation_rate=0.2):
+def generate_nsgaII_data(axes,
+                         search_time=100,
+                         population_size=40,
+                         generation_size=2,
+                         tournament_size=3,
+                         crossover_prob=0.9,
+                         mutation_rate=0.2):
     constants.nasbench.reset_budget_counters()
-    figure = plt.figure(figsize=(12, 12))
     population = []
     search_space = []
-    period = search_time // 20
+    # show image 5 times
+    period = search_time // 5
+    axes[0].set_xlabel('Time')
+    axes[0].set_ylabel('Accuracy')
+    times = []
+    hvs = []
+    axes[1].set_xlabel('Time')
+    axes[1].set_ylabel('HV')
     # Each element is one dictionary as { rank, validation accuracy , time, spec }
     init_population(population, population_size)
     # Initially Create random parent population
@@ -387,11 +408,10 @@ def nsgaII(search_time=40,
         population = sorted(population, key=functools.cmp_to_key(crowded_comparison_operator))
         population = population[:population_size]
         if turn % period == 0:
-            visualize(population, turn // period, figure)
+            visualize(population, turn // period, axes[0])
+        count_hypervolume(population, times=times, hvs=hvs)
 
-    pop_accuracy = [person['acc'] for person in population if person['rank'] == 1]
-    pop_time = [person['time'] for person in population if person['rank'] == 1]
-    ss_accuracy = [person['acc'] for person in search_space]
-    ss_time = [person['time'] for person in search_space]
+    # visualize_hypervolume
+    axes[1].plot(times, hvs, label='NSGA', color='blue')
 
-    return pop_accuracy, pop_time, ss_accuracy, ss_time
+    return population
