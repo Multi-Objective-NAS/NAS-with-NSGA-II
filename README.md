@@ -35,3 +35,11 @@ Using <https://github.com/google-research/nasbench>
 * population is list of elems.
   
   elem = {'acc': data['validation_accuracy'], 'time': data['training_time'], 'spec': spec}
+
+## Experiment
+
+<img src="./img/exp_result_1.png" alt="experiment" width="350"/>
+
+At every step of the evolution, the rank in the nonnominated sorting is expressed by red, orange, yellow, and green in the increasing order.
+
+<img src="./img/exp_result_2.png" alt="experiment2" width="350"/>
