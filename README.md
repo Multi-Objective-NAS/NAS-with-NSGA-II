@@ -8,10 +8,6 @@ Using <https://github.com/google-research/nasbench>
 1. download cuda 10.0, tensorflow 1.15, python 3.6
 2. execute setup.py
 
-
-## How to use
-
-
 ## Flow
 
 1. Initialize population randomly.
@@ -27,9 +23,19 @@ Using <https://github.com/google-research/nasbench>
 5. Crowding distance assignment
 6. Select next parent population by Crowded Comparison Operator.
 
-## Encode & Decode
+[Model Outline]
 
+<img src="./img/model_outline.png" description="Model Outline" width="350"/>
 
+[Nondominated Sorting]
+
+<img src="./img/Nondominated_sorting.png" alt="Nondominated Sorting" width="350"/>
+
+[Generate Offspring]
+
+<img src="./img/parent_selection.png" alt="Parent Selection" width="200"/>
+
+<img src="./img/crossover&mutation.png" alt="Crossover & Mutation" width="400"/>
 
 ## Data Structure
 * population is list of elems.
