@@ -25,11 +25,11 @@ Using <https://github.com/google-research/nasbench>
 
 [Model Outline]
 
-<img src="./img/model_outline.png" description="Model Outline" width="350"/>
+<img src="./img/model_outline.png" description="Model Outline" width="400"/>
 
 [Nondominated Sorting]
 
-<img src="./img/Nondominated_sorting.png" alt="Nondominated Sorting" width="350"/>
+<img src="./img/Nondominated_sorting.png" alt="Nondominated Sorting" width="400"/>
 
 [Generate Offspring]
 
@@ -48,4 +48,4 @@ Using <https://github.com/google-research/nasbench>
 
 At every step of the evolution, the rank in the nonnominated sorting is expressed by red, orange, yellow, and green in the increasing order.
 
-<img src="./img/exp_result_2.png" alt="experiment2" width="350"/>
+<img src="./img/exp_result_2.png" alt="experiment2" width="450"/>
